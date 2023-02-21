@@ -82,10 +82,10 @@ fp <- footprint(country = "DEU",  consumption = c("food", "balancing", "processi
 
 
 # add group names for plots
-fp <- merge(fp, items_group[,.(item, comm_group_plot)], by.x = c("item_target"), by.y = c("item"), all.x = TRUE, sort = FALSE)
+fp <- merge(fp, items_group[,.(item, comm_group_target = comm_group_plot)], by.x = c("item_target"), by.y = c("item"), all.x = TRUE, sort = FALSE)
 
 # aggregate as desired (see function library)
-fp_group  <- fp_aggregate(fp, aggregate_by = c("country_consumer", "comm_group_plot"), indicators = c("value"))
+fp_group  <- fp_aggregate(fp, aggregate_by = c("country_consumer", "comm_group_target"), indicators = c("value"))
 # fp_continent_group <- fp_aggregate(fp, aggregate_by = c("continent_origin", "comm_group_plot"), indicators = c("value"))
 # fp_continent <- fp_aggregate(fp, aggregate_by = c("continent_origin"), indicators = c("value"))
 # fp_country <- fp_aggregate(fp, aggregate_by = c("country_consumer", "country_origin"), indicators = c("value"))
@@ -93,10 +93,19 @@ fp_group  <- fp_aggregate(fp, aggregate_by = c("country_consumer", "comm_group_p
 # fp_continent_group_orig <- fp_aggregate(fp, aggregate_by = c("country_consumer", "continent_origin",  "item_origin"), indicators = c("value"))
 # fp_country_item <- fp_aggregate(fp, aggregate_by = c("country_consumer", "country_origin",  "item_target"), indicators = c("value"))
 
+Y_group <- as.data.table(t(agg(t(rowSums(Y_yr[, Y_codes$iso3c == country & Y_codes$fd %in% consumption])))), keep.rownames = TRUE)
+Y_group <- merge(Y_group, items_group[,.(comm_code, comm_group_target = comm_group_plot)], 
+                 by.x = c("rn"), by.y = c("comm_code"), all.x = TRUE, sort = FALSE)
+Y_group <- Y_group[,.(comm_group_target, value = V1)] %>% 
+  group_by(comm_group_target) %>% 
+  summarize(value = sum(value))
 
-
-
-
+fp_group <- merge(fp_group, Y_group, by="comm_group_target", all.x = TRUE)
+colnames(fp_group) <- c("comm_group", "input", "output")
+fp_group[, `:=`(losses = input - output,
+                losses_share = (input - output) / input)]
+fp <- merge(fp, items_group[,.(item, comm_group_source = comm_group_plot)], by.x = c("item_origin"), by.y = c("item"), all.x = TRUE, sort = FALSE)
+fp_group_source  <- fp_aggregate(fp, aggregate_by = c("country_consumer", "comm_group_source"), indicators = c("value"))
 
 
 
